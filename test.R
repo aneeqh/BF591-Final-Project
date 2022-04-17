@@ -13,6 +13,7 @@ meta = read_csv(meta_path)
 
 #function to process metadata table into summary table-
 summ_table <- function(meta_tib){
-  sum_tib <- tibble("Columns" = colnames(meta_tib), "Type" = sapply(meta_tib, class))
-  return(NULL)
+  summ_tib <- tibble("Columns" = colnames(meta_tib), "Type" = sapply(meta_tib, class),
+                    "Mean" = sapply(meta_tib, mean, na.rm = TRUE), "SD" = sapply(meta_tib, sd, na.rm = TRUE))
+  return(summ_tib)
 }
