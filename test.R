@@ -5,7 +5,7 @@ library(ggplot2)
 
 #set filepaths
 meta_path = 'data/sample_metadata.csv'
-norm_counts_path = 'data/GSE64810_mlhd_DESeq2_norm_counts_adjust.txt'
+norm_counts_path = 'data/norm_counts.csv'
 deseq_res_path = 'data/GSE64810_mlhd_DESeq2_diffexp_DESeq2_outlier_trimmed_adjust.txt'
 
 #import data
@@ -25,4 +25,6 @@ plot_aod <- function(meta_tib){
     theme_bw()
   return(histo)
 }
-plot_aod(meta)
+
+#normalize the counts data
+counts <- read_csv(norm_counts_path)
