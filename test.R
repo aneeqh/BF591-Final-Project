@@ -17,3 +17,12 @@ summ_table <- function(meta_tib){
                     "Mean" = sapply(meta_tib, mean, na.rm = TRUE), "SD" = sapply(meta_tib, sd, na.rm = TRUE))
   return(summ_tib)
 }
+
+plot_aod <- function(meta_tib){
+  histo <- ggplot(meta_tib, aes(Age_of_death))+
+    geom_histogram(bins = 10)+
+    labs(title = 'Histogram of Age of Death')+
+    theme_bw()
+  return(histo)
+}
+plot_aod(meta)
