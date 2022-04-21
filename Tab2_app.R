@@ -11,13 +11,13 @@ ui <- fluidPage(
     sidebarPanel(
       fileInput(inputId = 'countsFP', label = 'Load normalized counts matrix CSV'),
       sliderInput(inputId = 'percvar', label = 'Select the minimum percentile variance of genes', min = 0, max = 100, value = 10),
-      sliderInput(inputId = 'nonzero', label = 'Select the number of non-zero samples', min = 0, max = 69, value = 5),
+      sliderInput(inputId = 'nonzero', label = 'Select the minimum number of non-zero samples', min = 0, max = 69, value = 5),
       submitButton(text='Submit !')
     ),
     mainPanel(
       tabsetPanel(
         tabPanel('Summary', tableOutput(outputId = 'normsumm')),
-        tabPanel('Diagnostic Plots'),
+        tabPanel('Diagnostic Plots',p('Please wait 10-15 seconds after submitting for the plots to load'), plotOutput(outputId = 'medvar'), plotOutput(outputId = 'medzero')),
         tabPanel('Heatmap'),
         tabPanel('PCA')
       ))
@@ -37,32 +37,77 @@ server <- function(input, output, session){
   #function to produce summary table
   counts_summ <- function(counts_tib, perc_var, nz_genes){
     if (!is.null(input$countsFP)){
-      print('Here!')
       tot_samp <- ncol(counts_tib)-1  #store original number of samples and genes
       tot_genes <- nrow(counts_tib)
-      counts_tib <- counts %>% mutate(variance = apply(counts[-1], MARGIN = 1, FUN = var))  #calculate variance and then percentile
+      counts_tib <- counts_tib %>% mutate(variance = apply(counts_tib[-1], MARGIN = 1, FUN = var))  #calculate variance and then percentile
       perc_val <- quantile(counts_tib$variance, probs = perc_var/100)   #calculate percentile
       counts_tib <- filter(counts_tib, variance >= perc_val)  #filter by percentile
-      print('here2')
       counts_tib <- na_if(counts_tib, 0)    #make zeroes NA's
       counts_tib$non_zero <- tot_samp-rowSums(is.na(counts_tib))  #calculate no. of genes with enough non zero samples
       counts_tib <- filter(counts_tib, non_zero >= nz_genes)  #filter by non-zero samples
-      print('here3')
       filt_genes <- nrow(counts_tib)    #calculate the number and % of genes passing the filters
       perc_pass_genes <- filt_genes/tot_genes*100
       fail_genes <- tot_genes-filt_genes
       perc_fail_genes <- fail_genes/tot_genes*100
       #produce the summary tibble
-      print('here4')
-      summ_tib <- tibble('Measure' = c('Number of Samples', 'Number of Rows', 'No. of genes passing filters', "Percentage (%) passing filter", 'No. of genes not passing filters', 'Percentafe (%) not passing filter'),
+      summ_tib <- tibble('Measure' = c('Number of Samples', 'Number of Genes', 'No. of genes passing filters', "Percentage (%) passing filter", 'No. of genes not passing filters', 'Percentafe (%) not passing filter'),
                          'Value' = c(tot_samp, tot_genes, filt_genes, perc_pass_genes, fail_genes, perc_fail_genes))
       return(summ_tib)}
     else{return(NULL)}
   }
-  
+  #function to produce median vs variance plot
+  med_vs_var <- function(counts_tib, perc_var){
+    if (!is.null(input$countsFP)){
+      #make a plot tibble
+      plot_tib <- counts_tib%>%
+        mutate(Median = apply(counts_tib[-1], MARGIN = 1, FUN = median), 
+               Variance = apply(counts_tib[-1], MARGIN = 1, FUN = var))
+      perc_val <- quantile(plot_tib$Variance, probs = perc_var/100)   #calculate percentile
+      plot_tib <- plot_tib %>% mutate(thresh = case_when(Variance >= perc_val ~ "TRUE", TRUE ~ "FALSE"))
+      #plot scatter plot
+      cols <- c("FALSE" = "red", "TRUE" = "black")
+      scatter <- ggplot(plot_tib, aes(Median, Variance))+
+        geom_point(aes(color=thresh), alpha=0.75)+
+        scale_color_manual(values = cols)+
+        labs(title = 'Plot of Median vs Variance.', subtitle = "Genes filtered out are in red.")+
+        scale_y_log10()+
+        scale_x_log10()+
+        theme_bw()+
+        theme(legend.position = 'bottom')
+      return(scatter)}
+      else{return(NULL)}
+  }
+  #function to produce median vs non-zero samples plot
+  med_vs_nz <- function(counts_tib, nz_genes){
+    if (!is.null(input$countsFP)){
+      tot_samp <- ncol(counts_tib)-1  #store original number of samples and genes
+      #make a plot tibble
+      plot_tib <- counts_tib %>%   
+        mutate(Median = apply(counts_tib[-1], MARGIN = 1, FUN = median)) %>% na_if(0)  #calc median, convert 0 to NA
+      plot_tib$no_zeros <- rowSums(is.na(plot_tib))  #make new col, with counts.
+      plot_tib <- plot_tib %>% mutate(thresh = case_when(no_zeros <= nz_genes ~ "TRUE", TRUE ~ "FALSE"))
+      #plot scatter plot
+      cols <- c("FALSE" = "red", "TRUE" = "black")
+      scatter <- ggplot(plot_tib, aes(Median, no_zeros))+
+        geom_point(aes(color=thresh), alpha=0.75)+
+        scale_color_manual(values = cols)+
+        scale_x_log10()+
+        labs(title = 'Plot of Median vs Number of Non-Zero genes', subtitle = "Genes filtered out are in red.")+
+        theme_bw()+
+        ylab('Number of samples with zero count')+
+        theme(legend.position = 'bottom')
+      return(scatter)}
+    else{return(NULL)}
+  }
   #methods to render tables and plots
   output$normsumm <- renderTable({
     counts_summ(load_counts(), input$percvar, input$nonzero)
+  })
+  output$medvar <- renderPlot({
+    med_vs_var(load_counts(), input$percvar)
+  })
+  output$medzero <- renderPlot({
+    med_vs_nz(load_counts(), input$nonzero)
   })
 }
 

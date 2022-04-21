@@ -49,4 +49,27 @@ counts_summ <- function(counts_tib, perc_var, nz_genes){
 }
 counts_summ(counts, 10, 65)
 
+med_vs_var <- function(counts_tib, perc_var){
+  #make a plot tibble
+  plot_tib <- counts_tib%>%
+    mutate(Median = apply(counts_tib[-1], MARGIN = 1, FUN = median), 
+           Variance = apply(counts_tib[-1], MARGIN = 1, FUN = var))
+  perc_val <- quantile(plot_tib$Variance, probs = perc_var/100)   #calculate percentile
+  plot_tib <- plot_tib %>% mutate(thresh = case_when(Variance >= perc_val ~ "TRUE", TRUE ~ "FALSE"))
+  #plot scatter plot
+  cols <- c("FALSE" = "red", "TRUE" = "black")
+  scatter <- ggplot(plot_tib, aes(Median, Variance))+
+    geom_point(aes(color=thresh))+
+    scale_color_manual(values = cols)+
+    labs(title = 'Plot of Median vs Variance.', subtitle = "Genes filtered out are in red.")+
+    scale_y_log10()+
+    scale_x_log10()+
+    theme_bw()
+  return(scatter)
+}
+med_vs_var(counts, 10)
 
+df <- counts %>%   
+  mutate(Median = apply(counts[-1], MARGIN = 1, FUN = median)) %>% na_if(0)  #calc median, convert 0 to NA
+df$no_zeros <- rowSums(is.na(df))  #make new col, with counts.
+df <- df %>% mutate(thresh = case_when(no_zeros <= 6  ~ "TRUE", TRUE ~ "FALSE"))
