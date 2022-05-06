@@ -7,7 +7,7 @@ ah#set filepaths
 meta_path = 'data/sample_metadata.csv'
 norm_counts_path = 'data/norm_counts.csv'
 deseq_res_path = 'data/deseq_diff_exp_res.csv'
-
+sample_info_path = 'data/sample_info_matrix.csv'
 #import data
 meta = read_csv(meta_path)
 
@@ -111,3 +111,6 @@ plot_pca <- function(counts_tib, perc_var, comp1, comp2){
 
 #import the diff exp results-
 diffexp <- read_csv("data/deseq_diff_exp_res.csv")
+
+#import sample info matrix
+sample_info <- read_csv(sample_info_path)

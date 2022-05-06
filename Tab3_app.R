@@ -7,7 +7,7 @@ library(DT)
 ui <- fluidPage(
   titlePanel("Differential Expression results"),
   p("On this page you can upload the results of differential expression analysis and explore them."),
-  p("To use this application, download the CSV 'deseq_res.csv' from the data directory of this app's repository."),
+  p("To use this application, upload a CSv file contaainig the differential expression data."),
   sidebarLayout(
     sidebarPanel(
       fileInput(inputId = 'DEFP', label = 'Load differential expression results CSV'),
