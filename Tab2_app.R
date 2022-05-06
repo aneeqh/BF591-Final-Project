@@ -20,11 +20,10 @@ ui <- fluidPage(
         tabPanel('Diagnostic Plots', p('Please wait 10-15 seconds after submitting for the plots to load'), plotOutput(outputId = 'medvar'), plotOutput(outputId = 'medzero')),
         tabPanel('Heatmap', p('Please wait 20 seconds after submitting for the heatmap to load'), plotOutput(outputId = "hmap")),
         tabPanel('PCA', selectInput(inputId = "comp1", label="Select X-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")),
-          selectInput(inputId = "comp2", label="Select Y-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")),
+          selectInput(inputId = "comp2", label="Select Y-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10"), selected = "PC2"),
           plotOutput(outputId = "PCAplot"))
       ))
   ))
-
 server <- function(input, output, session){
   options(shiny.maxRequestSize=30*1024^2)
   #function to take norm counts input file
@@ -128,7 +127,7 @@ server <- function(input, output, session){
       x <- round(variance[comp1]*100, 2)
       y <- round(variance[comp2]*100, 2)
       #produce PCA plot
-      plot_tib <- tibble(PC1 = tr_pca$x[,1], PC2=tr_pca$x[,2])
+      plot_tib <- tibble(PC1 = pca_res$x[,comp1], PC2=pca_res$x[,comp2])
       pca <- ggplot(plot_tib, aes(PC1, PC2))+
         geom_point()+
         labs(title="Princple Component Analysis Plot")+

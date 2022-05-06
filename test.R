@@ -6,7 +6,7 @@ library(ggplot2)
 ah#set filepaths
 meta_path = 'data/sample_metadata.csv'
 norm_counts_path = 'data/norm_counts.csv'
-deseq_res_path = 'data/GSE64810_mlhd_DESeq2_diffexp_DESeq2_outlier_trimmed_adjust.txt'
+deseq_res_path = 'data/deseq_diff_exp_res.csv'
 
 #import data
 meta = read_csv(meta_path)
@@ -99,7 +99,7 @@ plot_pca <- function(counts_tib, perc_var, comp1, comp2){
   x <- round(variance[comp1]*100, 2)
   y <- round(variance[comp2]*100, 2)
   #produce PCA plot
-  plot_tib <- tibble(PC1 = tr_pca$x[,1], PC2=tr_pca$x[,2])
+  plot_tib <- tibble(PC1 = pca_res$x[comp1], PC2=pca_res$x[comp2])
   pca <- ggplot(plot_tib, aes(PC1, PC2))+
     geom_point()+
     labs(title="Princple Component Analysis Plot")+
@@ -108,3 +108,6 @@ plot_pca <- function(counts_tib, perc_var, comp1, comp2){
     theme_bw()
   return(pca)
 }
+
+#import the diff exp results-
+diffexp <- read_csv("data/deseq_diff_exp_res.csv")
