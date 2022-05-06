@@ -3,7 +3,7 @@ library(tidyverse)
 library(shiny)
 library(ggplot2)
 
-#set filepaths
+ah#set filepaths
 meta_path = 'data/sample_metadata.csv'
 norm_counts_path = 'data/norm_counts.csv'
 deseq_res_path = 'data/GSE64810_mlhd_DESeq2_diffexp_DESeq2_outlier_trimmed_adjust.txt'
@@ -73,3 +73,25 @@ df <- counts %>%
   mutate(Median = apply(counts[-1], MARGIN = 1, FUN = median)) %>% na_if(0)  #calc median, convert 0 to NA
 df$no_zeros <- rowSums(is.na(df))  #make new col, with counts.
 df <- df %>% mutate(thresh = case_when(no_zeros <= 6  ~ "TRUE", TRUE ~ "FALSE"))
+
+
+#plotting heatmap
+plot_heatmap <- function(counts_tib, perc_var){
+  #produce plot_tib
+  plot_tib <- counts_tib %>% 
+    mutate(variance = apply(counts_tib[-1], MARGIN = 1, FUN = var), .after = gene)
+  perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
+  plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
+  hmap <- pheatmap::pheatmap(as.matrix(plot_tib[-c(1,2)]), scale = "row")
+  return(hmap)
+}
+
+#pca plot
+plot_pca <- function(counts_tib, perc_var){
+  #make plot tib-
+  plot_tib <- counts_tib %>% 
+    mutate(variance = apply(counts_tib[-1], MARGIN = 1, FUN = var), .after = gene)
+  perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
+  plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
+  
+}

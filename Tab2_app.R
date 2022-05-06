@@ -17,9 +17,10 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(
         tabPanel('Summary', tableOutput(outputId = 'normsumm')),
-        tabPanel('Diagnostic Plots',p('Please wait 10-15 seconds after submitting for the plots to load'), plotOutput(outputId = 'medvar'), plotOutput(outputId = 'medzero')),
-        tabPanel('Heatmap'),
-        tabPanel('PCA')
+        tabPanel('Diagnostic Plots', p('Please wait 10-15 seconds after submitting for the plots to load'), plotOutput(outputId = 'medvar'), plotOutput(outputId = 'medzero')),
+        tabPanel('Heatmap', p('Please wait 10-15 seconds after submitting for the plots to load'), plotOutput(outputId = "hmap")),
+        tabPanel('PCA', selectInput(inputId = "comp1", label="Select X-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10"))),
+          selectInput(inputId = "comp2", label="Select Y-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10"))
       ))
   ))
 
@@ -99,6 +100,19 @@ server <- function(input, output, session){
       return(scatter)}
     else{return(NULL)}
   }
+  #function to produce heatmap
+  plot_heatmap <- function(counts_tib, perc_var){
+    #if (!is.null(input$countsFP)){
+      counts_tib <- log10(counts_tib[-1])
+      #produce plot_tib
+      plot_tib <- counts_tib %>% 
+        mutate(variance = apply(counts_tib, MARGIN = 1, FUN = var))
+      perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
+      plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
+      hmap <- pheatmap::pheatmap(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row")
+      return(hmap)
+    #else{return(NULL)}
+  }
   #methods to render tables and plots
   output$normsumm <- renderTable({
     counts_summ(load_counts(), input$percvar, input$nonzero)
@@ -108,6 +122,9 @@ server <- function(input, output, session){
   })
   output$medzero <- renderPlot({
     med_vs_nz(load_counts(), input$nonzero)
+  })
+  output$hmap <- renderPlot({
+    plot_heatmap(load_counts(), input$percvar)
   })
 }
 
