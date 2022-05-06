@@ -10,7 +10,7 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       fileInput(inputId = 'countsFP', label = 'Load normalized counts matrix CSV'),
-      sliderInput(inputId = 'percvar', label = 'Select the minimum percentile variance of genes', min = 0, max = 100, value = 10),
+      sliderInput(inputId = 'percvar', label = 'Select the minimum percentile variance of genes', min = 0, max = 100, value = 80),
       sliderInput(inputId = 'nonzero', label = 'Select the minimum number of non-zero samples', min = 0, max = 69, value = 5),
       submitButton(text='Submit !')
     ),
@@ -18,9 +18,10 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel('Summary', tableOutput(outputId = 'normsumm')),
         tabPanel('Diagnostic Plots', p('Please wait 10-15 seconds after submitting for the plots to load'), plotOutput(outputId = 'medvar'), plotOutput(outputId = 'medzero')),
-        tabPanel('Heatmap', p('Please wait 10-15 seconds after submitting for the plots to load'), plotOutput(outputId = "hmap")),
-        tabPanel('PCA', selectInput(inputId = "comp1", label="Select X-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10"))),
-          selectInput(inputId = "comp2", label="Select Y-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10"))
+        tabPanel('Heatmap', p('Please wait 20 seconds after submitting for the heatmap to load'), plotOutput(outputId = "hmap")),
+        tabPanel('PCA', selectInput(inputId = "comp1", label="Select X-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")),
+          selectInput(inputId = "comp2", label="Select Y-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")),
+          plotOutput(outputId = "PCAplot"))
       ))
   ))
 
@@ -102,7 +103,7 @@ server <- function(input, output, session){
   }
   #function to produce heatmap
   plot_heatmap <- function(counts_tib, perc_var){
-    #if (!is.null(input$countsFP)){
+    if (!is.null(input$countsFP)){
       counts_tib <- log10(counts_tib[-1])
       #produce plot_tib
       plot_tib <- counts_tib %>% 
@@ -110,8 +111,32 @@ server <- function(input, output, session){
       perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
       plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
       hmap <- pheatmap::pheatmap(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row")
-      return(hmap)
-    #else{return(NULL)}
+      return(hmap)}
+    else{return(NULL)}
+  }
+  #function to produce PCA plot
+  plot_pca <- function(counts_tib, perc_var, comp1, comp2){
+    if (!is.null(input$countsFP)){
+      #make plot tib-
+      filt_tib <- counts_tib %>% 
+        mutate(variance = apply(counts_tib[-1], MARGIN = 1, FUN = var), .after = gene)
+      perc_val <- quantile(filt_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
+      filt_tib <- filter(filt_tib, variance >= perc_val) #filter the tibble
+      pca_res <- prcomp(t(filt_tib[-c(1,2)]), scale = FALSE) #transpose the data and perform PCA
+      #extract variance
+      variance <- summary(pca_res)$importance[2,]
+      x <- round(variance[comp1]*100, 2)
+      y <- round(variance[comp2]*100, 2)
+      #produce PCA plot
+      plot_tib <- tibble(PC1 = tr_pca$x[,1], PC2=tr_pca$x[,2])
+      pca <- ggplot(plot_tib, aes(PC1, PC2))+
+        geom_point()+
+        labs(title="Princple Component Analysis Plot")+
+        xlab(str_c(comp1, x, "% variance", sep=" "))+
+        ylab(str_c(comp2, y, "% variance", sep=" "))+
+        theme_bw()
+      return(pca)}
+    else{return(NULL)}
   }
   #methods to render tables and plots
   output$normsumm <- renderTable({
@@ -125,6 +150,9 @@ server <- function(input, output, session){
   })
   output$hmap <- renderPlot({
     plot_heatmap(load_counts(), input$percvar)
+  })
+  output$PCAplot <- renderPlot({
+    plot_pca(load_counts(), input$percvar, input$comp1, input$comp2)
   })
 }
 

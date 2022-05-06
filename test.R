@@ -87,11 +87,24 @@ plot_heatmap <- function(counts_tib, perc_var){
 }
 
 #pca plot
-plot_pca <- function(counts_tib, perc_var){
+plot_pca <- function(counts_tib, perc_var, comp1, comp2){
   #make plot tib-
-  plot_tib <- counts_tib %>% 
+  filt_tib <- counts_tib %>% 
     mutate(variance = apply(counts_tib[-1], MARGIN = 1, FUN = var), .after = gene)
-  perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
-  plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
-  
+  perc_val <- quantile(filt_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
+  filt_tib <- filter(filt_tib, variance >= perc_val) #filter the tibble
+  pca_res <- prcomp(t(filt_tib[-c(1,2)]), scale = FALSE) #transpose the data and perform PCA
+  #extract variance
+  variance <- summary(pca_res)$importance[2,]
+  x <- round(variance[comp1]*100, 2)
+  y <- round(variance[comp2]*100, 2)
+  #produce PCA plot
+  plot_tib <- tibble(PC1 = tr_pca$x[,1], PC2=tr_pca$x[,2])
+  pca <- ggplot(plot_tib, aes(PC1, PC2))+
+    geom_point()+
+    labs(title="Princple Component Analysis Plot")+
+    xlab(str_c(comp1, x, "% variance", sep=" "))+
+    ylab(str_c(comp2, y, "% variance", sep=" "))+
+    theme_bw()
+  return(pca)
 }
