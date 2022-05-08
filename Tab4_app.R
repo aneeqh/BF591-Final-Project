@@ -45,7 +45,7 @@ server <- function(input, output, session){
       return(NULL)
     }
   })
-  #function to make plot-
+  #function to make distribution plots-
   plot_distro <- function(counts_tib, meta_tib, meta_cat, selectgene){
     if (!is.null(input$meta4FP) & !is.null(input$counts4FP)){
       counts_tib <- column_to_rownames(counts_tib, var = "gene")

@@ -51,7 +51,7 @@ server <- function(input, output, session){
       return(histo)}
     else{return(NULL)}
   }
-  #function to produce AOD histogram
+  #function to produce RIN histogram
   plot_rin <- function(meta_tib){
     if (!is.null(input$metaFP)){
       histo <- ggplot(meta_tib, aes(RIN))+
