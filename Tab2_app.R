@@ -109,7 +109,7 @@ server <- function(input, output, session){
         mutate(variance = apply(counts_tib, MARGIN = 1, FUN = var))
       perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
       plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
-      hmap <- pheatmap::pheatmap(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row")
+      hmap <- heatmap(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row")
       return(hmap)}
     else{return(NULL)}
   }

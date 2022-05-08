@@ -96,29 +96,38 @@ ui <- fluidPage(
 
 server <- function(input, output, session){
   options(shiny.maxRequestSize=30*1024^2)  #increase file upload limit
-  #function to take metadata input file
+  #function to take metadata input file for first tab
   load_meta <- reactive({
     if (!is.null(input$metaFP)){
       meta <- read_csv(input$metaFP$datapath)
       return(meta)}
-    else{
-      return(NULL)
-    }
+    else{return(NULL)}
   })
-  #function to take norm counts input file
+  #function to take norm counts input file for second tab
   load_counts <- reactive({
     if (!is.null(input$countsFP)){
-      meta <- read_csv(input$countsFP$datapath)
-      return(meta)}
-    else{
-      return(NULL)
-    }
+      counts <- read_csv(input$countsFP$datapath)
+      return(counts)}
+    else{return(NULL)}
   })
   #function to load Diff. Expr. results file
   load_de <- reactive({
     if (!is.null(input$DEFP)){
       defp <- read_csv(input$DEFP$datapath)
       return(defp)}
+    else{return(NULL)}
+  })
+  #function to take inputs for fourth tab-
+  load_4meta <- reactive({
+    if (!is.null(input$meta4FP)){
+      meta <- read_csv(input$meta4FP$datapath)
+      return(meta)}
+    else{return(NULL)}
+  })
+  load_4counts <- reactive({
+    if (!is.null(input$counts4FP)){
+      counts <- read_csv(input$counts4FP$datapath)
+      return(counts)}
     else{return(NULL)}
   })
   #function to produce table
@@ -239,7 +248,7 @@ server <- function(input, output, session){
         mutate(variance = apply(counts_tib, MARGIN = 1, FUN = var))
       perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
       plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
-      hmap <- pheatmap::pheatmap(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row")
+      hmap <- heatmap(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row")
       return(hmap)}
     else{return(NULL)}
   }
@@ -268,8 +277,7 @@ server <- function(input, output, session){
     else{return(NULL)}
   }
   #function to produce volcano plot
-  volcano_plot <-
-    function(dataf, x_name, y_name, slider, color1, color2) {
+  volcano_plot <- function(dataf, x_name, y_name, slider, color1, color2) {
       if (!is.null(input$DEFP)){
         #make plot df-
         cols <- c("FALSE" = color1, "TRUE" = color2)
@@ -357,7 +365,7 @@ server <- function(input, output, session){
     draw_table(load_de(), input$padjmag)
   })
   output$distroplot <- renderPlot({
-    plot_distro(load_counts(), load_meta(), input$metachoice, input$gene)
+    plot_distro(load_4counts(), load_4meta(), input$metachoice, input$gene)
   })
 }
 
