@@ -117,7 +117,7 @@ sample_info <- read_csv(sample_info_path)
 
 plot_distro <- function(counts_tib, meta_tib, meta_cat, selectgene){
   counts_tib <- column_to_rownames(counts_tib, "gene")
-  gene_counts <- as.numeric(as.vector(counts_tib[selectgene,]))
+  gene_counts <- unlist(as.vector(counts_tib[selectgene,]))
   plot_tib <- tibble("Gene_Counts" = gene_counts, meta_value = meta_tib$meta_cat)
   if (meta_cat == "Age_of_death"){
     plot <- ggplot(plot_tib, aes(meta_value))+

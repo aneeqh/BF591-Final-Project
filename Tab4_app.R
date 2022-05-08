@@ -50,16 +50,16 @@ server <- function(input, output, session){
     if (!is.null(input$meta4FP) & !is.null(input$counts4FP)){
       counts_tib <- column_to_rownames(counts_tib, var = "gene")
       gene_counts <- as.numeric(as.vector(counts_tib[selectgene,]))
-      plot_tib <- tibble("Gene_Counts" = gene_counts, meta_value = pull(meta_tib, meta_cat))
+      plot_tib <- tibble(Gene_Counts = gene_counts, meta_value = pull(meta_tib, meta_cat))
       if (meta_cat == "Diagnosis"){
         plot <- ggplot(plot_tib, aes(meta_value))+
           geom_bar()+
           theme_bw()+
-          labs(title = "Plot of gene counts vs Age of Death")
+          labs(title = "Plot of gene counts vs Diagnosis")
         return(plot)
       }
       else {
-        plot <- ggplot(plot_tib, aes(meta_value,"Gene Counts"))+
+        plot <- ggplot(plot_tib, aes(meta_value,Gene_Counts))+
           geom_point()+
           theme_bw()+
           labs(title = str_c("Plot of gene counts vs ", meta_cat))
