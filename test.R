@@ -114,3 +114,25 @@ diffexp <- read_csv("data/deseq_diff_exp_res.csv")
 
 #import sample info matrix
 sample_info <- read_csv(sample_info_path)
+
+plot_distro <- function(counts_tib, meta_tib, meta_cat, selectgene){
+  counts_tib <- column_to_rownames(counts_tib, "gene")
+  gene_counts <- as.numeric(as.vector(counts_tib[selectgene,]))
+  plot_tib <- tibble("Gene_Counts" = gene_counts, meta_value = meta_tib$meta_cat)
+  if (meta_cat == "Age_of_death"){
+    plot <- ggplot(plot_tib, aes(meta_value))+
+      geom_bar()+
+      theme_bw()+
+      labs(title = "Plot of gene counts vs Age of Death")
+    return(plot)
+  }
+  else {
+    plot <- ggplot(plot_tib, aes("Gene Counts", meta_value))+
+      geom_point()+
+      theme_bw()+
+      labs(title = str_c("Plot of gene counts vs ", meta_cat))
+    return(plot)
+  }}
+
+plot_distro(counts, meta, "Age_of_death", "ENSG00000000003.10")
+gene_counts <- as.numeric(as.vector(row_counts["ENSG00000000003.10",]))  #convert df genes to rownames then make numeric vector
