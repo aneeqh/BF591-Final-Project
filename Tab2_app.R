@@ -101,12 +101,15 @@ server <- function(input, output, session){
     else{return(NULL)}
   }
   #function to produce heatmap
-  plot_heatmap <- function(counts_tib, perc_var){
+  plot_heatmap <- function(counts_tib, perc_var, nz_genes){
     if (!is.null(input$countsFP)){
-      counts_tib <- log10(counts_tib[-1])
+      counts_tib <- na_if(counts_tib, 0)
+      counts_tib$no_zeros <- rowSums(is.na(counts_tib))  #make new col, with counts.
+      counts_tib <- filter(counts_tib, no_zeros <= nz_genes)
+      counts_tib <- log10(counts_tib[,!colnames(counts_tib) %in% c("gene", "no_zeros")]) #exclude the gene names column and log scale the values  
       #produce plot_tib
       plot_tib <- counts_tib %>% 
-        mutate(variance = apply(counts_tib, MARGIN = 1, FUN = var))
+        mutate(variance = apply(counts_tib, MARGIN = 1, FUN = var)) #compute variance to filter the data
       perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
       plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
       hmap <- heatmap(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row")
@@ -148,7 +151,7 @@ server <- function(input, output, session){
     med_vs_nz(load_counts(), input$nonzero)
   })
   output$hmap <- renderPlot({
-    plot_heatmap(load_counts(), input$percvar)
+    plot_heatmap(load_counts(), input$percvar, input$nonzero)
   })
   output$PCAplot <- renderPlot({
     plot_pca(load_counts(), input$percvar, input$comp1, input$comp2)

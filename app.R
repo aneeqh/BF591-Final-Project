@@ -4,8 +4,9 @@ library(shiny)
 library(ggplot2)
 library(DT)
 library(bslib)
+library(RColorBrewer)
+library(gplots)
 
-#front-end
 ui <- fluidPage(
   theme = bs_theme(version = 4, bootswatch = "minty"),
   titlePanel("BF 591-R Final project"),
@@ -40,7 +41,7 @@ ui <- fluidPage(
                  tabsetPanel(
                    tabPanel('Summary', tableOutput(outputId = 'normsumm')),
                    tabPanel('Diagnostic Plots', p('Please wait 10-15 seconds after submitting for the plots to load'), plotOutput(outputId = 'medvar'), plotOutput(outputId = 'medzero')),
-                   tabPanel('Heatmap', p('Please wait 20 seconds after submitting for the heatmap to load'), plotOutput(outputId = "hmap")),
+                   tabPanel('Heatmap', p('Please wait 10 seconds after submitting for the heatmap to load'), plotOutput(outputId = "hmap")),
                    tabPanel('PCA', selectInput(inputId = "comp1", label="Select X-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10")),
                             selectInput(inputId = "comp2", label="Select Y-axis", choices = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC5", "PC6", "PC7", "PC8", "PC9", "PC10"), selected = "PC2"),
                             plotOutput(outputId = "PCAplot"))
@@ -84,10 +85,10 @@ ui <- fluidPage(
                              label = "Select metadata category", selected = "Age_of_death"),
                  #insert gene search box here
                  textInput("gene", label = "Enter gene to search for", placeholder = "ENSG00000000003.10"),
-                 #selectInput("plotType", label = "Choose what type of plot to make", choices = c("Bar", "Box", "Violin", "Beeswarm")),
                  submitButton(text='Plot !')
                ),
                mainPanel(
+                 p("The metadata had only one column (diagnosis) that could be categorized. This was chosen to be plotted as a bar plot and the other columns were produced as scatter plots."),
                  plotOutput("distroplot")
                )
              ))
@@ -110,14 +111,14 @@ server <- function(input, output, session){
       return(counts)}
     else{return(NULL)}
   })
-  #function to load Diff. Expr. results file
+  #function to load Diff. Expr. results file for third tab
   load_de <- reactive({
     if (!is.null(input$DEFP)){
       defp <- read_csv(input$DEFP$datapath)
       return(defp)}
     else{return(NULL)}
   })
-  #function to take inputs for fourth tab-
+  #functions to take inputs for fourth tab-
   load_4meta <- reactive({
     if (!is.null(input$meta4FP)){
       meta <- read_csv(input$meta4FP$datapath)
@@ -198,18 +199,18 @@ server <- function(input, output, session){
   #function to produce median vs variance plot
   med_vs_var <- function(counts_tib, perc_var){
     if (!is.null(input$countsFP)){
-      #make a plot tibble
+      #make a plot tibble - calculate variance and median
       plot_tib <- counts_tib%>%
         mutate(Median = apply(counts_tib[-1], MARGIN = 1, FUN = median), 
                Variance = apply(counts_tib[-1], MARGIN = 1, FUN = var))
       perc_val <- quantile(plot_tib$Variance, probs = perc_var/100)   #calculate percentile
-      plot_tib <- plot_tib %>% mutate(thresh = case_when(Variance >= perc_val ~ "TRUE", TRUE ~ "FALSE"))
+      plot_tib <- plot_tib %>% mutate(thresh = case_when(Variance >= perc_val ~ "TRUE", TRUE ~ "FALSE")) #sort genes by percentile
       #plot scatter plot
       cols <- c("FALSE" = "red", "TRUE" = "black")
       scatter <- ggplot(plot_tib, aes(Median, Variance))+
         geom_point(aes(color=thresh), alpha=0.75)+
         scale_color_manual(values = cols)+
-        labs(title = 'Plot of Median vs Variance.', subtitle = "Genes filtered out are in red.")+
+        labs(title = 'Plot of Median vs Variance.', subtitle = "Genes filtered out are in red. X and Y axes are log-scaled.")+
         scale_y_log10()+
         scale_x_log10()+
         theme_bw()+
@@ -220,19 +221,19 @@ server <- function(input, output, session){
   #function to produce median vs non-zero samples plot
   med_vs_nz <- function(counts_tib, nz_genes){
     if (!is.null(input$countsFP)){
-      tot_samp <- ncol(counts_tib)-1  #store original number of samples and genes
+      tot_samp <- ncol(counts_tib)-1  #store original number of samples
       #make a plot tibble
       plot_tib <- counts_tib %>%   
-        mutate(Median = apply(counts_tib[-1], MARGIN = 1, FUN = median)) %>% na_if(0)  #calc median, convert 0 to NA
+        mutate(Median = apply(counts_tib[-1], MARGIN = 1, FUN = median)) %>% na_if(0)  #calculate median, convert 0 to NA
       plot_tib$no_zeros <- rowSums(is.na(plot_tib))  #make new col, with counts.
-      plot_tib <- plot_tib %>% mutate(thresh = case_when(no_zeros <= nz_genes ~ "TRUE", TRUE ~ "FALSE"))
+      plot_tib <- plot_tib %>% mutate(thresh = case_when(no_zeros <= nz_genes ~ "TRUE", TRUE ~ "FALSE")) #sort genes based on number of zeroes
       #plot scatter plot
       cols <- c("FALSE" = "red", "TRUE" = "black")
       scatter <- ggplot(plot_tib, aes(Median, no_zeros))+
         geom_point(aes(color=thresh), alpha=0.75)+
         scale_color_manual(values = cols)+
         scale_x_log10()+
-        labs(title = 'Plot of Median vs Number of Non-Zero genes', subtitle = "Genes filtered out are in red.")+
+        labs(title = 'Plot of Median vs Number of Non-Zero genes', subtitle = "Genes filtered out are in red. X-axis is log scaled.")+
         theme_bw()+
         ylab('Number of samples with zero count')+
         theme(legend.position = 'bottom')
@@ -240,15 +241,18 @@ server <- function(input, output, session){
     else{return(NULL)}
   }
   #function to produce heatmap
-  plot_heatmap <- function(counts_tib, perc_var){
+  plot_heatmap <- function(counts_tib, perc_var, nz_genes){
     if (!is.null(input$countsFP)){
-      counts_tib <- log10(counts_tib[-1])
+      counts_tib <- na_if(counts_tib, 0)
+      counts_tib$no_zeros <- rowSums(is.na(counts_tib))  #make new col, with counts.
+      counts_tib <- filter(counts_tib, no_zeros <= nz_genes)
+      counts_tib <- log10(counts_tib[,!colnames(counts_tib) %in% c("gene", "no_zeros")]) #exclude the gene names column and log scale the values  
       #produce plot_tib
       plot_tib <- counts_tib %>% 
-        mutate(variance = apply(counts_tib, MARGIN = 1, FUN = var))
+        mutate(variance = apply(counts_tib, MARGIN = 1, FUN = var)) #compute variance to filter the data
       perc_val <- quantile(plot_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
       plot_tib <- filter(plot_tib, variance >= perc_val) #filter the tibble
-      hmap <- heatmap(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row")
+      hmap <- heatmap.2(as.matrix(plot_tib[-ncol(plot_tib)]), scale = "row", col = brewer.pal(9, "YlOrRd"))
       return(hmap)}
     else{return(NULL)}
   }
@@ -257,7 +261,7 @@ server <- function(input, output, session){
     if (!is.null(input$countsFP)){
       #make plot tib-
       filt_tib <- counts_tib %>% 
-        mutate(variance = apply(counts_tib[-1], MARGIN = 1, FUN = var), .after = gene)
+        mutate(variance = apply(counts_tib[-1], MARGIN = 1, FUN = var), .after = gene) #calculate variance for filtering
       perc_val <- quantile(filt_tib$variance, probs = perc_var/100, na.rm = TRUE)   #calculate percentile
       filt_tib <- filter(filt_tib, variance >= perc_val) #filter the tibble
       pca_res <- prcomp(t(filt_tib[-c(1,2)]), scale = FALSE) #transpose the data and perform PCA
@@ -283,7 +287,7 @@ server <- function(input, output, session){
         cols <- c("FALSE" = color1, "TRUE" = color2)
         threshold <- 10^slider
         plot_data <- dataf %>%
-          dplyr::mutate(thresh = case_when(padj <= threshold ~ "TRUE", TRUE ~ "FALSE"))
+          dplyr::mutate(thresh = case_when(padj <= threshold ~ "TRUE", TRUE ~ "FALSE")) #sort the data based on the threshold
         #produce volcano plot
         volc_plot <- ggplot( plot_data, aes(get(x_name), -log10(get(y_name))))+
           geom_point(aes(color=thresh))+
@@ -304,10 +308,11 @@ server <- function(input, output, session){
   }
   #function to make distribution plots-
   plot_distro <- function(counts_tib, meta_tib, meta_cat, selectgene){
-    if (!is.null(input$meta4FP) & !is.null(input$counts4FP)){
-      counts_tib <- column_to_rownames(counts_tib, var = "gene")
+    if (!is.null(input$meta4FP) & !is.null(input$counts4FP) & input$gene !=""){
+      counts_tib <- column_to_rownames(counts_tib, var = "gene") #convert gene to row names and use that to select gene of interest
       gene_counts <- as.numeric(as.vector(counts_tib[selectgene,]))
-      plot_tib <- tibble(Gene_Counts = gene_counts, meta_value = pull(meta_tib, meta_cat))
+      plot_tib <- tibble(Gene_Counts = gene_counts, meta_value = pull(meta_tib, meta_cat))  #create plot tibble
+      #plot the data. If chosen category is diagnosis make a bar plot. Else, make a scatter plot.
       if (meta_cat == "Diagnosis"){
         plot <- ggplot(plot_tib, aes(meta_value))+
           geom_bar()+
@@ -325,9 +330,10 @@ server <- function(input, output, session){
     else{return(NULL)}
   }
   #methods to display output to front-end
+  #first tab outputs
   output$summ <- renderTable({
     summ_table(load_meta())
-  })
+    })
   output$metadata <- DT::renderDataTable({
     load_meta()
   })
@@ -340,6 +346,7 @@ server <- function(input, output, session){
   output$pmi <- renderPlot({
     plot_pmi(load_meta())
   })
+  #Second tab outputs
   output$normsumm <- renderTable({
     counts_summ(load_counts(), input$percvar, input$nonzero)
   })
@@ -350,20 +357,22 @@ server <- function(input, output, session){
     med_vs_nz(load_counts(), input$nonzero)
   })
   output$hmap <- renderPlot({
-    plot_heatmap(load_counts(), input$percvar)
-  })
+    plot_heatmap(load_counts(), input$percvar, input$nonzero)
+  } ,height = 600, width = 600)
   output$PCAplot <- renderPlot({
     plot_pca(load_counts(), input$percvar, input$comp1, input$comp2)
   })
+  #Third tab outputs
   output$difftable <- DT::renderDataTable({
     load_de()
   })
   output$volcano <- renderPlot({
     volcano_plot(load_de(), input$xaxis, input$yaxis, input$padjmag, input$basecol, input$highcol)
-  })
+  } ,height = 600, width = 600)
   output$plotTable <- renderDataTable({
     draw_table(load_de(), input$padjmag)
   })
+  #Fourth tab outputs
   output$distroplot <- renderPlot({
     plot_distro(load_4counts(), load_4meta(), input$metachoice, input$gene)
   })
