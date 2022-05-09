@@ -1,3 +1,4 @@
 # BF591-Final-Project
-A repo created to store the code for the final project in the R course.
-For this project, I am creating an R Shiny app that carries out a variety of functions. 
+This repository contains the final project for the BF591-R course. 
+The dataset used for this project can be found (here)[https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE64810].
+The app.R should be run using the data available in the data folder. 
